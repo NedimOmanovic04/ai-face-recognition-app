@@ -1,0 +1,27 @@
+# Trenirani model i labele (generiraju se s train.py)
+trained_model.yml
+labels.pkl
+encodings.pkl
+
+# Dataset — privatne slike (ne pushaj u repo)
+dataset/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual env
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
