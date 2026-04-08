@@ -18,6 +18,22 @@ IMG_SIZE = (150, 150)  # Veličina na koju se normalizuju slike
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
+profile_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_profileface.xml"
+)
+
+def get_faces(gray, min_size=(30, 30)):
+    faces = list(face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=min_size))
+    if len(faces) == 0:
+        faces = list(profile_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=min_size))
+    if len(faces) == 0:
+        flipped_gray = cv2.flip(gray, 1)
+        flipped_faces = profile_cascade.detectMultiScale(flipped_gray, scaleFactor=1.1, minNeighbors=5, minSize=min_size)
+        faces = []
+        w_img = gray.shape[1]
+        for (x, y, w, h) in flipped_faces:
+            faces.append((w_img - x - w, y, w, h))
+    return faces
 
 face_data = []
 labels = []
@@ -48,9 +64,7 @@ for person in sorted(os.listdir(DATASET_PATH)):
             continue
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30)
-        )
+        faces = get_faces(gray, min_size=(30, 30))
 
         for (x, y, w, h) in faces:
             roi = gray[y : y + h, x : x + w]

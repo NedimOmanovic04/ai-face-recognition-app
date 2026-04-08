@@ -13,8 +13,8 @@ LABELS_FILE = "labels.pkl"
 
 # Confidence threshold za LBPH:
 # Niža vrijednost = veće pouzdanje (0 = savršen match)
-# Preporučena granica za markiranje kao "poznato": ispod 80
-CONFIDENCE_THRESHOLD = 80
+# Povećana granica na 100 kako bi te bolje prepoznavao (npr. otvorenih usta)
+CONFIDENCE_THRESHOLD = 100
 
 # --- Učitavanje modela i labela ---
 print("[INFO] Učitavanje modela...")
@@ -31,6 +31,22 @@ print(f"[INFO] Prepoznate osobe: {list(label_map.values())}")
 face_cascade = cv2.CascadeClassifier(
     cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
 )
+profile_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_profileface.xml"
+)
+
+def get_faces(gray, min_size=(60, 60)):
+    faces = list(face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=min_size))
+    if len(faces) == 0:
+        faces = list(profile_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=min_size))
+    if len(faces) == 0:
+        flipped_gray = cv2.flip(gray, 1)
+        flipped_faces = profile_cascade.detectMultiScale(flipped_gray, scaleFactor=1.1, minNeighbors=5, minSize=min_size)
+        faces = []
+        w_img = gray.shape[1]
+        for (x, y, w, h) in flipped_faces:
+            faces.append((w_img - x - w, y, w, h))
+    return faces
 
 print("[INFO] Pokrećem kameru... Pritisni ESC za izlaz.")
 
@@ -51,9 +67,7 @@ while True:
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # Detekcija lica
-    faces = face_cascade.detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
-    )
+    faces = get_faces(gray, min_size=(60, 60))
 
     for (x, y, w, h) in faces:
         roi = gray[y : y + h, x : x + w]
@@ -61,10 +75,6 @@ while True:
 
         # Prepoznavanje
         label_id, confidence = recognizer.predict(roi_resized)
-
-        # LBPH: confidence = udaljenost (manje = bolje)
-        # Konvertiraj u postotak (0–100%) gdje 100% = savršen match
-        confidence_pct = max(0.0, 100 - confidence)
 
         if confidence < CONFIDENCE_THRESHOLD:
             name = label_map.get(label_id, "Nepoznat")
@@ -76,8 +86,8 @@ while True:
         # Crtaj okvir
         cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
 
-        # Priprema teksta
-        label_text = f"{name}  {confidence_pct:.1f}%"
+        # Priprema teksta (samo ime, bez postotka)
+        label_text = f"{name}"
 
         # Pozadina za tekst
         (tw, th), bl = cv2.getTextSize(
